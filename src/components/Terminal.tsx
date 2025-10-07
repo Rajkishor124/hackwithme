@@ -17,10 +17,10 @@ export default function Terminal({
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Track whether user is scrolled to bottom
   const [autoScroll, setAutoScroll] = useState(true);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
-  // Boot when Hacker Lab opens
+  // Boot sequence trigger
   useEffect(() => {
     if (!visible) return;
     playSound("boot");
@@ -30,12 +30,9 @@ export default function Terminal({
   }, [visible]);
 
   useEffect(() => {
-    if (!booting) {
-      localStorage.setItem("terminal_history", JSON.stringify(lines));
-    }
+    if (!booting) localStorage.setItem("terminal_history", JSON.stringify(lines));
   }, [lines, booting]);
 
-  // ⚡ Boot sequence
   async function simulateBootSequence() {
     setLines([]);
     const sequence = [
@@ -57,7 +54,6 @@ export default function Terminal({
 
     await new Promise((r) => setTimeout(r, 500));
 
-    // ASCII Art logo (Raj Style)
     const asciiLogo = [
       "      ___            _      _     _            ",
       "     / _ \\__ _ _ __ (_) ___| |__ (_)_ __ ___   ",
@@ -66,6 +62,7 @@ export default function Terminal({
       "   \\/    \\__,_|_| |_|_|\\___|_| |_|_|_| |_| |_| ",
       "",
     ];
+
     for (const line of asciiLogo) {
       await new Promise((r) => setTimeout(r, 40));
       setLines((prev) => [...prev, line]);
@@ -80,7 +77,7 @@ export default function Terminal({
 
     setBooting(false);
     document.body.classList.remove("matrix-flicker");
-    setTimeout(() => inputRef.current?.focus(), 500);
+    setTimeout(() => inputRef.current?.focus(), 600);
   }
 
   // 🎧 Sound FX
@@ -91,7 +88,6 @@ export default function Terminal({
         : type === "enter"
         ? "/sounds/enter.wav"
         : "/sounds/boot.wav";
-
     const audio = new Audio(file);
     audio.volume = type === "boot" ? 0.6 : 0.3;
     audio.play().catch(() => {});
@@ -108,7 +104,7 @@ export default function Terminal({
     setInput("");
   }
 
-  // Main commands
+  // Commands
   async function handleCommand(command: string) {
     const args = command.split(" ");
     const cmd = args[0].toLowerCase();
@@ -169,9 +165,7 @@ export default function Terminal({
 
       case "badge":
         if (args[1] === "list") {
-          const badges = JSON.parse(
-            localStorage.getItem("portfolio_badges") || "[]"
-          );
+          const badges = JSON.parse(localStorage.getItem("portfolio_badges") || "[]");
           addLine(badges.length ? badges.join(", ") : "No badges yet.");
         } else addLine("Usage: badge list");
         break;
@@ -200,7 +194,6 @@ export default function Terminal({
     }
   }
 
-  // Utils
   function addLine(text: string) {
     setLines((prev) => [...prev, text]);
   }
@@ -212,52 +205,41 @@ export default function Terminal({
     setTimeout(() => el.classList.remove("pulse-green", "pulse-red"), 400);
   }
 
-  // 🧩 Scroll management logic
+  // 🧩 Scroll management
   useEffect(() => {
     const el = logRef.current;
     if (!el) return;
 
     const handleScroll = () => {
-      const atBottom =
-        el.scrollHeight - el.scrollTop <= el.clientHeight + 20;
+      const atBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 20;
       setAutoScroll(atBottom);
+      setShowScrollButton(!atBottom);
     };
 
     el.addEventListener("scroll", handleScroll);
     return () => el.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Auto-scroll only if user was near bottom
   useEffect(() => {
     const el = logRef.current;
     if (autoScroll && el) {
-      el.scrollTo({
-        top: el.scrollHeight,
-        behavior: "smooth",
-      });
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     }
   }, [lines, autoScroll]);
 
-  // 🧭 Trap scroll inside terminal
+  // Trap scroll inside
   useEffect(() => {
     const el = logRef.current;
     if (!el) return;
-
     const handleWheel = (e: WheelEvent) => {
       const atTop = el.scrollTop === 0;
       const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight;
-
-      // Prevent page scroll when inside terminal
-      if (
-        (e.deltaY < 0 && !atTop) ||
-        (e.deltaY > 0 && !atBottom)
-      ) {
+      if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) {
         e.stopPropagation();
         e.preventDefault();
         el.scrollTop += e.deltaY;
       }
     };
-
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
   }, []);
@@ -266,33 +248,32 @@ export default function Terminal({
 
   return (
     <div
-      className="relative bg-surface text-text font-mono rounded-md border border-surface-alt shadow-inner crt h-64 flex flex-col"
+      className="relative bg-surface text-text font-mono rounded-md border border-surface-alt shadow-inner crt flex flex-col h-[45vh] sm:h-[60vh]"
       onClick={() => inputRef.current?.focus()}
     >
       {/* Scrollable log */}
-      <div
-        ref={logRef}
-        className="flex-1 overflow-y-auto p-4"
-      >
+      <div ref={logRef} className="flex-1 overflow-y-auto p-3 sm:p-4 text-[0.8rem] sm:text-sm leading-relaxed">
         {booting ? (
           <div className="text-accent text-center mt-16 animate-pulse">
             <div className="text-lg mb-2">[ SYSTEM BOOTING... ]</div>
             <div className="text-sm text-slate-400">Please wait...</div>
           </div>
         ) : (
-          <>
-            {lines.map((line, i) => (
-              <div key={i} className="whitespace-pre-wrap">
-                {line}
-              </div>
-            ))}
-          </>
+          lines.map((line, i) => (
+            <div key={i} className="whitespace-pre-wrap">
+              {line}
+            </div>
+          ))
         )}
       </div>
 
+      {/* Input Line */}
       {!booting && (
-        <form onSubmit={handleSubmit} className="flex p-2 border-t border-surface-alt">
-          <span className="text-accent mr-2">$</span>
+        <form
+          onSubmit={handleSubmit}
+          className="flex items-center gap-2 p-2 sm:p-3 border-t border-surface-alt bg-surface/50"
+        >
+          <span className="text-accent">$</span>
           <input
             ref={inputRef}
             value={input}
@@ -300,11 +281,25 @@ export default function Terminal({
               playSound("type");
               setInput(e.target.value);
             }}
-            className="flex-1 bg-transparent border-none outline-none text-text caret-accent"
+            className="flex-1 bg-transparent border-none outline-none text-text caret-accent text-[0.85rem] sm:text-sm"
             placeholder="Type a command..."
             autoFocus
           />
         </form>
+      )}
+
+      {/* Scroll-to-bottom button */}
+      {showScrollButton && (
+        <button
+          onClick={() => {
+            const el = logRef.current;
+            if (!el) return;
+            el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+          }}
+          className="scroll-to-bottom absolute right-3 bottom-14 sm:bottom-16 text-[0.75rem] opacity-80 hover:opacity-100"
+        >
+          ↓
+        </button>
       )}
     </div>
   );

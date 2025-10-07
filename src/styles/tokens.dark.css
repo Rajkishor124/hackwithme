@@ -1,5 +1,6 @@
-/* tokens.dark.css */
-@theme {
+/* default / dark theme variables (applied on <html> or <body> via .dark class) */
+:root {
+  /* base fallback matches previous dark values */
   --color-bg: #0b0f13;
   --color-surface: #10161d;
   --color-surface-alt: #151c24;
@@ -8,9 +9,22 @@
   --color-accent: #00ff9c;
   --color-accent-2: #00e0ff;
   --color-danger: #ff0055;
-
   --shadow-soft: 0 2px 8px rgb(0 0 0 / 0.25);
-  --shadow-glow-accent: 0 0 12px 2px rgba(0, 255, 156, 0.5);
+  --shadow-glow-accent: 0 0 12px 2px rgba(0,255,156,0.5);
+  --radius-md: 0.5rem;
+}
 
+/* When using .dark on the root element, override explicitly (keeps specificity simple) */
+.dark {
+  --color-bg: #0b0f13;
+  --color-surface: #10161d;
+  --color-surface-alt: #151c24;
+  --color-text: #e2e8f0;
+  --color-text-dim: #94a3b8;
+  --color-accent: #00ff9c;
+  --color-accent-2: #00e0ff;
+  --color-danger: #ff0055;
+  --shadow-soft: 0 2px 8px rgb(0 0 0 / 0.25);
+  --shadow-glow-accent: 0 0 12px 2px rgba(0,255,156,0.5);
   --radius-md: 0.5rem;
 }

@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef, type JSX } from "react";
+import { useEffect, useRef, useState, type JSX } from "react";
 import Terminal from "./components/Terminal";
 import ProjectCard from "./pages/Projects";
 import PuzzleEngine from "./components/PuzzleEngine";
 import AnimatedHero from "./components/AnimatedHero";
+import HackerHUD from "./components/HackerHUD";
 
 const themes = ["dark", "green", "blue", "red"] as const;
 
@@ -16,16 +17,16 @@ export default function App(): JSX.Element {
       return [];
     }
   });
-
+  const [hintUsage, setHintUsage] = useState<Record<string, number>>({});
   const [currentTheme, setCurrentTheme] = useState<
     "dark" | "green" | "blue" | "red"
   >("dark");
 
-  // Refs for smooth scroll
+  // Refs for scrolling
   const projectsRef = useRef<HTMLDivElement | null>(null);
   const hackerLabRef = useRef<HTMLDivElement | null>(null);
 
-  // 🌈 Theme switch logic
+  // ✅ Theme switch logic
   function switchTheme() {
     const nextIndex = (themes.indexOf(currentTheme) + 1) % themes.length;
     const nextTheme = themes[nextIndex];
@@ -38,13 +39,10 @@ export default function App(): JSX.Element {
     root.classList.add("matrix-flicker");
     setTimeout(() => root.classList.remove("matrix-flicker"), 350);
 
-    console.log(
-      `%cTheme switched → ${nextTheme}`,
-      "color: var(--color-accent);"
-    );
     localStorage.setItem("theme", nextTheme);
   }
 
+  // Load saved theme
   useEffect(() => {
     const saved = localStorage.getItem("theme") as
       | "dark"
@@ -78,7 +76,7 @@ export default function App(): JSX.Element {
     projectsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
   function openHackerLab() {
-    setShowTerminal(false); // reset first to trigger re-mount
+    setShowTerminal(false);
     setTimeout(() => {
       setShowTerminal(true);
       hackerLabRef.current?.scrollIntoView({
@@ -88,6 +86,12 @@ export default function App(): JSX.Element {
     }, 50);
   }
 
+  // ✅ Typed total hint usage counter
+  const totalHintsUsed = Object.values(hintUsage).reduce(
+    (a: number, b: number) => a + b,
+    0
+  );
+
   return (
     <div className="min-h-screen bg-bg text-text font-sans transition-all duration-500 ease-slow">
       {/* HEADER */}
@@ -96,7 +100,6 @@ export default function App(): JSX.Element {
           Rajkishor Murmu
         </h1>
         <nav className="flex items-center gap-4">
-          {/* THEME BUTTON */}
           <button
             onClick={switchTheme}
             className="relative group px-3 py-1 rounded-md border border-surface text-sm hover:bg-surface-alt flex items-center gap-2 transition-all duration-300"
@@ -111,7 +114,6 @@ export default function App(): JSX.Element {
             {currentTheme.charAt(0).toUpperCase() + currentTheme.slice(1)} Mode
           </button>
 
-          {/* HACKER LAB BUTTON */}
           <button
             onClick={openHackerLab}
             className="px-3 py-1 rounded-md border border-surface text-sm hover:bg-surface-alt transition-all duration-300"
@@ -119,7 +121,6 @@ export default function App(): JSX.Element {
             Hacker Lab
           </button>
 
-          {/* PROJECTS BUTTON */}
           <button
             onClick={scrollToProjects}
             className="px-3 py-1 rounded-md border border-surface text-sm hover:bg-surface-alt transition-all duration-300"
@@ -129,32 +130,21 @@ export default function App(): JSX.Element {
         </nav>
       </header>
 
+      {/* 🧠 Hacker Heads-Up Display (HUD) */}
+      <HackerHUD hintUsageCount={totalHintsUsed} />
+
       {/* MAIN BODY */}
       <main className="max-w-6xl mx-auto px-6">
         <AnimatedHero
-          onViewProjects={() =>
-            projectsRef.current?.scrollIntoView({
-              behavior: "smooth",
-              block: "start",
-            })
-          }
-          onEnterHackerLab={() => {
-            setShowTerminal(false);
-            setTimeout(() => {
-              setShowTerminal(true);
-              hackerLabRef.current?.scrollIntoView({
-                behavior: "smooth",
-                block: "start",
-              });
-            }, 100);
-          }}
+          onViewProjects={scrollToProjects}
+          onEnterHackerLab={openHackerLab}
         />
 
         <div className="p-4 mt-8 rounded-md bg-surface text-accent shadow-glow-accent transition-all duration-500">
           Tailwind Token Integration ✅ — Current Theme: {currentTheme}
         </div>
 
-        {/* PROJECTS SECTION */}
+        {/* PROJECTS */}
         <section id="projects" ref={projectsRef} className="py-12 scroll-mt-24">
           <h3 className="text-xl font-bold mb-4">Highlighted Projects</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -183,7 +173,7 @@ export default function App(): JSX.Element {
 
           <div className="rounded-lg border border-surface p-4 bg-surface-alt space-y-4">
             <Terminal
-              key={showTerminal ? "visible" : "hidden"} // 🔥 forces remount
+              key={showTerminal ? "visible" : "hidden"}
               visible={showTerminal}
               onSolved={(id) => addBadge(id)}
               onPuzzleTrigger={(pid) => {
@@ -191,11 +181,11 @@ export default function App(): JSX.Element {
                 localStorage.setItem("activePuzzle", pid);
               }}
             />
-            <PuzzleEngine />
+            <PuzzleEngine onHintUsageChange={setHintUsage} />
           </div>
         </section>
 
-        {/* BADGES SECTION */}
+        {/* BADGES */}
         <section className="py-12">
           <h3 className="text-sm text-text-dim uppercase tracking-wide mb-3">
             Badges

@@ -1,17 +1,13 @@
-/* tokens.green.css */
-@layer theme {
-  .green {
-    --color-bg: #07120c;
-    --color-surface: #0b1a11;
-    --color-surface-alt: #102016;
-    --color-text: #d1fae5;
-    --color-text-dim: #6ee7b7;
-
-    --color-accent: #00ff9c;
-    --color-accent-2: #4affd6;
-    --color-danger: #ff3366;
-
-    --shadow-soft: 0 2px 8px rgb(0 0 0 / 0.25);
-    --shadow-glow-accent: 0 0 12px 2px rgba(0, 255, 156, 0.5);
-  }
+/* green theme variables applied when .green is added to <html> */
+.green {
+  --color-bg: #07120c;
+  --color-surface: #0b1a11;
+  --color-surface-alt: #102016;
+  --color-text: #d1fae5;
+  --color-text-dim: #6ee7b7;
+  --color-accent: #00ff9c;
+  --color-accent-2: #4affd6;
+  --color-danger: #ff3366;
+  --shadow-soft: 0 2px 8px rgb(0 0 0 / 0.25);
+  --shadow-glow-accent: 0 0 12px 2px rgba(0,255,156,0.5);
 }

@@ -13,8 +13,6 @@ interface ProjectCardProps {
 export default function ProjectCard({
   title,
   desc,
-  demo = "#",
-  repo = "#",
   tags = [],
   onSelect,
 }: ProjectCardProps) {

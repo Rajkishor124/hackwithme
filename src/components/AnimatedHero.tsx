@@ -69,14 +69,14 @@ export default function AnimatedHero({
         >
           <button
             onClick={onViewProjects}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-md bg-surface-alt border border-surface text-text hover:bg-surface transition-all duration-300 focus-visible:ring-2 focus-visible:ring-accent shadow-[0_0_10px_rgba(0,255,156,0.2)]"
+            className="cursor-pointer w-full sm:w-auto px-6 py-2.5 rounded-md bg-surface-alt border border-surface text-text hover:bg-surface transition-all duration-300 focus-visible:ring-2 focus-visible:ring-accent shadow-[0_0_10px_rgba(0,255,156,0.2)]"
           >
             View Projects
           </button>
 
           <button
             onClick={onEnterHackerLab}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-md border border-surface text-accent hover:bg-surface-alt transition-all duration-300 focus-visible:ring-2 focus-visible:ring-accent shadow-[0_0_10px_rgba(0,255,156,0.15)]"
+            className="cursor-pointer w-full sm:w-auto px-6 py-2.5 rounded-md border border-surface text-accent hover:bg-surface-alt transition-all duration-300 focus-visible:ring-2 focus-visible:ring-accent shadow-[0_0_10px_rgba(0,255,156,0.15)]"
           >
             Enter Hacker Lab
           </button>

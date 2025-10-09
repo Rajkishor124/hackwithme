@@ -290,7 +290,7 @@ export default function PuzzleEngine({
                     <input
                       value={attempt}
                       onChange={(e) => setAttempt(e.target.value)}
-                      placeholder="Is your brain working..."
+                      placeholder="Is your brain even working..."
                       className="flex-1 bg-transparent border border-surface px-3 py-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
                     />
                     <button

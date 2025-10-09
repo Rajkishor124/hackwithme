@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type JSX } from "react";
 import Terminal from "./components/Terminal";
-import ProjectCard from "./pages/Projects";
 import PuzzleEngine from "./components/PuzzleEngine";
 import AnimatedHero from "./components/AnimatedHero";
 import HackerHUD from "./components/HackerHUD";
+import ProjectsGrid from "./pages/ProjectsGrid";
 
 const themes = ["dark", "green", "blue", "red"] as const;
 
@@ -22,11 +22,9 @@ export default function App(): JSX.Element {
     "dark" | "green" | "blue" | "red"
   >("dark");
 
-  // Refs for scrolling
   const projectsRef = useRef<HTMLDivElement | null>(null);
   const hackerLabRef = useRef<HTMLDivElement | null>(null);
 
-  // ✅ Theme switch logic
   function switchTheme() {
     const nextIndex = (themes.indexOf(currentTheme) + 1) % themes.length;
     const nextTheme = themes[nextIndex];
@@ -42,7 +40,6 @@ export default function App(): JSX.Element {
     localStorage.setItem("theme", nextTheme);
   }
 
-  // Load saved theme
   useEffect(() => {
     const saved = localStorage.getItem("theme") as
       | "dark"
@@ -56,12 +53,6 @@ export default function App(): JSX.Element {
     }
   }, []);
 
-  useEffect(() => {
-    console.log("%c💡 Try switching themes via the UI!", "color: lime;");
-    console.log("Tip: Open the Hacker Lab and type 'help' for clues!");
-  }, []);
-
-  // 🧠 Add badge persistence
   function addBadge(id: string) {
     setBadges((prev) => {
       if (prev.includes(id)) return prev;
@@ -71,10 +62,10 @@ export default function App(): JSX.Element {
     });
   }
 
-  // 🎯 Smooth scroll helpers
   function scrollToProjects() {
     projectsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+
   function openHackerLab() {
     setShowTerminal(false);
     setTimeout(() => {
@@ -86,9 +77,8 @@ export default function App(): JSX.Element {
     }, 50);
   }
 
-  // ✅ Typed total hint usage counter
   const totalHintsUsed = Object.values(hintUsage).reduce(
-    (a: number, b: number) => a + b,
+    (a, b) => a + b,
     0
   );
 
@@ -102,7 +92,7 @@ export default function App(): JSX.Element {
         <nav className="flex items-center gap-4">
           <button
             onClick={switchTheme}
-            className="relative group px-3 py-1 rounded-md border border-surface text-sm hover:bg-surface-alt flex items-center gap-2 transition-all duration-300"
+            className="cursor-pointer relative group px-3 py-1 rounded-md border border-surface text-sm hover:bg-surface-alt flex items-center gap-2 transition-all duration-300"
           >
             <span
               className={`inline-block w-3 h-3 rounded-full transition-all duration-500 ${
@@ -116,55 +106,37 @@ export default function App(): JSX.Element {
 
           <button
             onClick={openHackerLab}
-            className="px-3 py-1 rounded-md border border-surface text-sm hover:bg-surface-alt transition-all duration-300"
+            className="cursor-pointer px-3 py-1 rounded-md border border-surface text-sm hover:bg-surface-alt transition-all duration-300"
           >
             Hacker Lab
           </button>
 
           <button
             onClick={scrollToProjects}
-            className="px-3 py-1 rounded-md border border-surface text-sm hover:bg-surface-alt transition-all duration-300"
+            className="cursor-pointer px-3 py-1 rounded-md border border-surface text-sm hover:bg-surface-alt transition-all duration-300"
           >
             Projects
           </button>
         </nav>
       </header>
 
-      {/* 🧠 Hacker Heads-Up Display (HUD) */}
+      {/* HUD */}
       <HackerHUD hintUsageCount={totalHintsUsed} />
 
-      {/* MAIN BODY */}
+      {/* MAIN */}
       <main className="max-w-6xl mx-auto px-6">
         <AnimatedHero
           onViewProjects={scrollToProjects}
           onEnterHackerLab={openHackerLab}
         />
 
-        <div className="p-4 mt-8 rounded-md bg-surface text-accent shadow-glow-accent transition-all duration-500">
-          Tailwind Token Integration ✅ — Current Theme: {currentTheme}
-        </div>
-
-        {/* PROJECTS */}
+        {/* ✅ PROJECTS GRID SECTION */}
         <section id="projects" ref={projectsRef} className="py-12 scroll-mt-24">
-          <h3 className="text-xl font-bold mb-4">Highlighted Projects</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ProjectCard
-              title="MSME Credit Matcher"
-              desc="Spring Boot + React app for matching loans to MSMEs."
-            />
-            <ProjectCard
-              title="Digital Learning Platform"
-              desc="Students & Teachers platform with exams & reports."
-            />
-          </div>
+          <ProjectsGrid />
         </section>
 
-        {/* HACKER LAB */}
-        <section
-          id="hacker-lab"
-          ref={hackerLabRef}
-          className="py-12 scroll-mt-24"
-        >
+        {/* 🧠 HACKER LAB */}
+        <section id="hacker-lab" ref={hackerLabRef} className="py-12 scroll-mt-24">
           <h3 className="text-xl font-bold mb-4">Hacker Lab (Playground)</h3>
           <p className="text-text-dim mb-4">
             The Hacker Lab is a lightweight terminal that accepts a few
@@ -210,7 +182,7 @@ export default function App(): JSX.Element {
 
         {/* FOOTER */}
         <footer className="py-12 text-center text-sm text-text-dim">
-          <div>Made with ❤️ • Built using React + Tailwind</div>
+          <div>Built using React + Tailwind and still in progress...</div>
           <div className="mt-2">
             Tip: open the browser console for secret clues.
           </div>

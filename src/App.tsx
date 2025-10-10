@@ -4,6 +4,7 @@ import PuzzleEngine from "./components/PuzzleEngine";
 import AnimatedHero from "./components/AnimatedHero";
 import HackerHUD from "./components/HackerHUD";
 import ProjectsGrid from "./pages/ProjectsGrid";
+import { Analytics } from "@vercel/analytics/react"
 
 const themes = ["dark", "green", "blue", "red"] as const;
 
@@ -89,6 +90,7 @@ export default function App(): JSX.Element {
         <h1 className="text-2xl font-semibold tracking-tight">
           Rajkishor Murmu
         </h1>
+        <Analytics/>
         <nav className="flex items-center gap-4">
           <button
             onClick={switchTheme}

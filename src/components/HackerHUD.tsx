@@ -9,7 +9,12 @@ export default function HackerHUD({ hintUsageCount }: HackerHUDProps) {
   const [solved, setSolved] = useState(0);
   const [total, setTotal] = useState(0);
   const [hiddenUnlocked, setHiddenUnlocked] = useState(false);
-  const [visible, setVisible] = useState(true);
+  const [expanded, setExpanded] = useState(true);
+
+  // ✅ Automatically collapse on mobile
+  useEffect(() => {
+    if (window.innerWidth < 640) setExpanded(false);
+  }, []);
 
   useEffect(() => {
     const puzzles = getPuzzles(true);
@@ -38,22 +43,39 @@ export default function HackerHUD({ hintUsageCount }: HackerHUDProps) {
   const progressPercent = total ? Math.round((solved / total) * 100) : 0;
 
   return (
-    <div
-      className={`fixed bottom-4 right-4 z-50 transition-all duration-500 ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
-      }`}
-    >
-      {/* COLLAPSIBLE BUTTON */}
-      <button
-        onClick={() => setVisible(!visible)}
-        className="absolute -top-2 -left-2 bg-surface-alt border border-surface px-2 py-0.5 rounded text-xs text-text-dim hover:text-accent transition-all"
-      >
-        {visible ? "–" : "+"}
-      </button>
+    <div className="fixed bottom-4 right-4 z-50 transition-all duration-300">
+      {/* Floating Toggle Button */}
+      {!expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="cursor-pointer rounded-full bg-surface-alt border border-surface text-accent shadow-[0_0_12px_var(--color-accent)]
+                     w-10 h-10 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+        >
+          🧠
+        </button>
+      )}
 
-      {visible && (
-        <div className="backdrop-blur-md bg-surface/60 border border-surface-alt rounded-lg shadow-[0_0_12px_var(--color-accent)] p-4 text-xs md:text-sm font-mono w-56 md:w-64 animate-fadeIn">
-          <div className="flex justify-between items-center mb-1">
+      {/* Expanded HUD */}
+      {expanded && (
+        <div
+          className="relative backdrop-blur-md bg-surface/60 border border-surface-alt rounded-lg 
+                     shadow-[0_0_12px_var(--color-accent)] p-4 text-xs md:text-sm font-mono 
+                     w-56 md:w-64 animate-fadeIn"
+        >
+          {/* COLLAPSE BUTTON */}
+          <button
+            onClick={() => setExpanded(false)}
+            className="
+              cursor-pointer absolute -top-2 -left-2 bg-surface-alt border border-surface 
+              text-text-dim hover:text-accent transition-all 
+              rounded-md flex items-center justify-center 
+              w-5 h-5 text-[10px] sm:w-6 sm:h-6 sm:text-xs
+            "
+          >
+            –
+          </button>
+
+          <div className="flex justify-between items-center mb-1 ml-15">
             <span className="text-accent font-semibold tracking-wide">
               Hacker HUD
             </span>

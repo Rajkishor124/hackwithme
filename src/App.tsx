@@ -4,7 +4,7 @@ import PuzzleEngine from "./components/PuzzleEngine";
 import AnimatedHero from "./components/AnimatedHero";
 import HackerHUD from "./components/HackerHUD";
 import ProjectsGrid from "./pages/ProjectsGrid";
-import { Analytics } from "@vercel/analytics/react"
+import { Analytics } from "@vercel/analytics/react";
 
 const themes = ["dark", "green", "blue", "red"] as const;
 
@@ -54,6 +54,16 @@ export default function App(): JSX.Element {
     }
   }, []);
 
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   function addBadge(id: string) {
     setBadges((prev) => {
       if (prev.includes(id)) return prev;
@@ -78,55 +88,72 @@ export default function App(): JSX.Element {
     }, 50);
   }
 
-  const totalHintsUsed = Object.values(hintUsage).reduce(
-    (a, b) => a + b,
-    0
-  );
+  const totalHintsUsed = Object.values(hintUsage).reduce((a, b) => a + b, 0);
 
   return (
     <div className="min-h-screen bg-bg text-text font-sans transition-all duration-500 ease-slow">
       {/* HEADER */}
-      <header className="max-w-6xl mx-auto p-6 flex items-center justify-between sticky top-0 z-50 bg-bg/80 backdrop-blur-md border-b border-surface">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Rajkishor Murmu
-        </h1>
-        <Analytics/>
-        <nav className="flex items-center gap-4">
-          <button
-            onClick={switchTheme}
-            className="cursor-pointer relative group px-3 py-1 rounded-md border border-surface text-sm hover:bg-surface-alt flex items-center gap-2 transition-all duration-300"
-          >
-            <span
-              className={`inline-block w-3 h-3 rounded-full transition-all duration-500 ${
-                ["green", "blue", "red"].includes(currentTheme)
-                  ? "bg-accent shadow-glow-accent"
-                  : "bg-slate-600"
-              }`}
-            ></span>
-            {currentTheme.charAt(0).toUpperCase() + currentTheme.slice(1)} Mode
-          </button>
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 
+    ${
+      scrolled
+        ? "bg-bg/90 border-surface shadow-[0_0_15px_var(--color-accent)] backdrop-blur-md"
+        : "bg-bg/80 border-transparent backdrop-blur-md"
+    }`}
+      >
+        <div className="max-w-6xl mx-auto p-5 sm:p-6 flex items-center justify-between">
+          {/* 👤 Name / Logo */}
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-accent">
+            Rajkishor Murmu
+          </h1>
 
-          <button
-            onClick={openHackerLab}
-            className="cursor-pointer px-3 py-1 rounded-md border border-surface text-sm hover:bg-surface-alt transition-all duration-300"
-          >
-            Hacker Lab
-          </button>
+          <Analytics />
 
-          <button
-            onClick={scrollToProjects}
-            className="cursor-pointer px-3 py-1 rounded-md border border-surface text-sm hover:bg-surface-alt transition-all duration-300"
-          >
-            Projects
-          </button>
-        </nav>
+          {/* 🧭 Navbar Buttons */}
+          <nav className="flex items-center gap-3 sm:gap-4">
+            {/* THEME SWITCHER */}
+            <button
+              onClick={switchTheme}
+              className="cursor-pointer relative group px-3 py-1 rounded-md border border-surface text-xs sm:text-sm 
+                   hover:bg-surface-alt flex items-center gap-2 transition-all duration-300"
+            >
+              <span
+                className={`inline-block w-3 h-3 rounded-full transition-all duration-500 ${
+                  ["green", "blue", "red"].includes(currentTheme)
+                    ? "bg-accent shadow-glow-accent"
+                    : "bg-slate-600"
+                }`}
+              ></span>
+              {currentTheme.charAt(0).toUpperCase() + currentTheme.slice(1)}{" "}
+              Mode
+            </button>
+
+            {/* HACKER LAB BUTTON */}
+            <button
+              onClick={openHackerLab}
+              className="cursor-pointer px-3 py-1 rounded-md border border-surface text-xs sm:text-sm 
+                   hover:bg-surface-alt transition-all duration-300"
+            >
+              Hacker Lab
+            </button>
+
+            {/* PROJECTS BUTTON */}
+            <button
+              onClick={scrollToProjects}
+              className="cursor-pointer px-3 py-1 rounded-md border border-surface text-xs sm:text-sm 
+                   hover:bg-surface-alt transition-all duration-300"
+            >
+              Projects
+            </button>
+          </nav>
+        </div>
       </header>
 
       {/* HUD */}
       <HackerHUD hintUsageCount={totalHintsUsed} />
 
       {/* MAIN */}
-      <main className="max-w-6xl mx-auto px-6">
+      <main className="max-w-6xl mx-auto px-6 pt-20">
         <AnimatedHero
           onViewProjects={scrollToProjects}
           onEnterHackerLab={openHackerLab}
@@ -138,7 +165,11 @@ export default function App(): JSX.Element {
         </section>
 
         {/* 🧠 HACKER LAB */}
-        <section id="hacker-lab" ref={hackerLabRef} className="py-12 scroll-mt-24">
+        <section
+          id="hacker-lab"
+          ref={hackerLabRef}
+          className="py-12 scroll-mt-24"
+        >
           <h3 className="text-xl font-bold mb-4">Hacker Lab (Playground)</h3>
           <p className="text-text-dim mb-4">
             The Hacker Lab is a lightweight terminal that accepts a few

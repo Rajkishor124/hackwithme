@@ -1,5 +1,4 @@
-// src/components/PuzzleEngine.tsx
-import { useEffect, useState, type JSX } from "react";
+import { useEffect, useState, useCallback, type JSX } from "react";
 import {
   getPuzzles,
   isSolved,
@@ -8,7 +7,7 @@ import {
   getDifficultyColor,
   getDifficultyLabel,
   type Puzzle,
-  type Difficulty, // ✅ make sure this is exported from lib/puzzles.ts
+  type Difficulty,
 } from "../lib/puzzles";
 
 type HintUsage = Record<string, number>;
@@ -45,7 +44,23 @@ export default function PuzzleEngine({
   const [solvedState, setSolvedState] = useState<Record<string, boolean>>({});
   const [showHidden, setShowHidden] = useState<boolean>(false);
 
-  useEffect((): void => {
+  // 🔓 Dynamic Unlock Modal State
+  const [unlockModal, setUnlockModal] = useState<{
+    show: boolean;
+    tier: number | null;
+    mode: "confirm" | "challenge" | "ad" | "terminal";
+    countdown?: number;
+    challengeCompleted?: boolean;
+    commandRequired?: string;
+    completed?: boolean;
+  }>({
+    show: false,
+    tier: null,
+    mode: "confirm",
+  });
+
+  // 🧠 Initial Load
+  useEffect(() => {
     const all = getPuzzles(true);
     const solvedMap: Record<string, boolean> = {};
     all.forEach((p) => {
@@ -55,28 +70,57 @@ export default function PuzzleEngine({
     setPuzzles(all);
   }, []);
 
-  useEffect((): void => {
+  // 💾 Persist hint usage
+  useEffect(() => {
     writeHintUsage(hintUsage);
     onHintUsageChange?.(hintUsage);
   }, [hintUsage, onHintUsageChange]);
 
-  useEffect((): void => {
+  // 🔍 Unlock hidden puzzles when all are solved
+  useEffect(() => {
     const allSolved = Object.values(solvedState).every(Boolean);
     if (allSolved) setShowHidden(true);
   }, [solvedState]);
 
+  // 🔓 Confirm Unlock (stable)
+  const confirmUnlockHint = useCallback((): void => {
+    if (!selected || unlockModal.tier === null) return;
+
+    const tier = unlockModal.tier;
+    setHintUsage((prev) => ({
+      ...prev,
+      [selected.id]: Math.max(prev[selected.id] ?? 0, tier),
+    }));
+    setUnlockModal({ show: false, tier: null, mode: "confirm" });
+  }, [selected, unlockModal.tier]);
+
+  // 🧩 Listen for terminal commands (for terminal unlock mode)
+  useEffect(() => {
+    const handleTerminalCommand = (e: Event): void => {
+      const customEvent = e as CustomEvent<{ command: string }>;
+      const command = customEvent.detail?.command?.toLowerCase();
+
+      if (!unlockModal.show || unlockModal.mode !== "terminal") return;
+
+      if (command === unlockModal.commandRequired?.toLowerCase()) {
+        setUnlockModal((prev) => ({ ...prev, completed: true }));
+        setTimeout(() => confirmUnlockHint(), 600);
+      }
+    };
+
+    window.addEventListener("terminal-command", handleTerminalCommand);
+    return () =>
+      window.removeEventListener("terminal-command", handleTerminalCommand);
+  }, [unlockModal, confirmUnlockHint]);
+
+  // 🎯 Select Puzzle
   function openPuzzle(p: Puzzle): void {
     setSelected(p);
     setAttempt("");
     setMessage(null);
-
-    setTimeout(() => {
-      document
-        .querySelector<HTMLInputElement>('input[placeholder^="Type solution"]')
-        ?.focus();
-    }, 120);
   }
 
+  // ✅ Try to Solve Puzzle
   function trySolve(): void {
     if (!selected) return;
     const res = checkSolution(selected.id, attempt.trim());
@@ -87,25 +131,74 @@ export default function PuzzleEngine({
     }
   }
 
-  function revealHint(level: number): void {
+  // ⚙️ Choose Unlock Mode
+  function triggerUnlock(tier: number): void {
     if (!selected) return;
-    const hints = getHints(selected.id);
-    if (level < 1 || level > hints.length) return;
-    setHintUsage((prev) => ({
-      ...prev,
-      [selected.id]: Math.max(prev[selected.id] ?? 0, level),
-    }));
+
+    const difficulty = selected.difficulty ?? "easy";
+    let mode: "confirm" | "challenge" | "ad" | "terminal" = "confirm";
+
+    if (difficulty === "hard" || difficulty === "secret") {
+      mode = "terminal";
+    } else {
+      const modes: ("confirm" | "ad" | "challenge")[] = [
+        "confirm",
+        "ad",
+        "challenge",
+      ];
+      mode = modes[Math.floor(Math.random() * modes.length)];
+    }
+
+    if (mode === "ad") {
+      setUnlockModal({ show: true, tier, mode, countdown: 5 });
+      let time = 5;
+      const timer = setInterval(() => {
+        time--;
+        setUnlockModal((prev) => {
+          if (!prev.show) {
+            clearInterval(timer);
+            return prev;
+          }
+
+          if (time <= 0) {
+            clearInterval(timer);
+            confirmUnlockHint();
+            return { ...prev, show: false };
+          }
+
+          return { ...prev, countdown: time };
+        });
+      }, 1000);
+    } else if (mode === "challenge") {
+      setUnlockModal({ show: true, tier, mode, challengeCompleted: false });
+    } else if (mode === "terminal") {
+      const command = `unlock hint${tier}`;
+      setUnlockModal({ show: true, tier, mode, commandRequired: command });
+    } else {
+      setUnlockModal({ show: true, tier, mode });
+    }
   }
 
+  // 🧩 Hint Rendering
   function renderHints(p: Puzzle): JSX.Element {
     const used = hintUsage[p.id] ?? 0;
     const hints = getHints(p.id);
+
+    const lockedMessages = [
+      "🔒 Hint encrypted — attempt unlock sequence?",
+      "⚡ System lock active — proceed with unlock?",
+      "🧠 Hint locked — click Unlock to begin challenge.",
+      "👀 Hidden intel — click Unlock to reveal.",
+    ];
+
     return (
       <div className="space-y-2 mt-4">
         <div className="text-xs text-text-dim uppercase">Hints</div>
         {hints.map((h, i) => {
           const tier = i + 1;
           const visible = used >= tier;
+          const randomLockMessage =
+            lockedMessages[Math.floor(Math.random() * lockedMessages.length)];
           return (
             <div
               key={i}
@@ -125,14 +218,18 @@ export default function PuzzleEngine({
                 Tier {tier}
               </div>
               <div className="text-sm flex-1">
-                {visible ? h.text : <em>Locked — reveal</em>}
+                {visible ? (
+                  h.text
+                ) : (
+                  <em className="text-text-dim italic">{randomLockMessage}</em>
+                )}
               </div>
               {!visible && (
                 <button
-                  onClick={() => revealHint(tier)}
-                  className="ml-auto text-xs px-2 py-1 rounded border border-surface hover:bg-surface-alt transition-all hover:scale-[1.03] active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  onClick={() => triggerUnlock(tier)}
+                  className="cursor-pointer ml-auto text-xs px-2 py-1 rounded border border-surface hover:bg-surface-alt transition-all hover:scale-[1.03] active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent/30"
                 >
-                  Reveal
+                  Unlock
                 </button>
               )}
             </div>
@@ -142,6 +239,7 @@ export default function PuzzleEngine({
     );
   }
 
+  // 🎨 Visible Puzzles
   const visiblePuzzles = puzzles.filter((p) => {
     if (!p.hidden) return true;
     if (showHidden) return true;
@@ -150,195 +248,187 @@ export default function PuzzleEngine({
   });
 
   return (
-    <div className="flex flex-col md:flex-row gap-4">
+    <div className="relative flex flex-col md:flex-row gap-4">
+      {/* 🧩 Puzzle List */}
       <aside
-        className={`rounded-lg p-4 border border-surface bg-surface-alt/40 flex-shrink-0 transition-all ${
+        className={`rounded-lg p-4 border border-surface bg-surface-alt/40 transition-all ${
           selected ? "hidden md:block md:w-1/3" : "w-full md:w-1/3"
         }`}
       >
         <h4 className="font-semibold mb-3 text-lg flex items-center gap-2">
-          Puzzles
-          <span className="text-xs text-accent/80">(Hack & Solve)</span>
+          Puzzles <span className="text-xs text-accent/80">(Hack & Solve)</span>
         </h4>
 
         <ul className="space-y-2">
           {visiblePuzzles.map((p) => {
             const solved = solvedState[p.id];
-            const isActive = selected?.id === p.id;
-            // ✅ safely handle missing difficulty field
-            const diff: Difficulty =
-              (p.difficulty as Difficulty) ?? "easy";
+            const diff: Difficulty = p.difficulty ?? "easy";
             const diffColor = getDifficultyColor(diff);
             const diffLabel = getDifficultyLabel(diff);
-
             return (
               <li
-                id={`puzzle-list-item-${p.id}`}
                 key={p.id}
                 onClick={() => openPuzzle(p)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") openPuzzle(p);
-                }}
-                className={`p-3 rounded cursor-pointer border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-accent/30 ${
-                  isActive
-                    ? "border-accent/50 bg-surface-alt/70 shadow-[0_0_10px_rgba(0,255,156,0.12)] scale-[1.01]"
+                className={`p-3 rounded cursor-pointer border transition-all ${
+                  selected?.id === p.id
+                    ? "border-accent/50 bg-surface-alt/70 scale-[1.01]"
                     : "border-surface hover:bg-surface/60 hover:scale-[1.01]"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-medium text-sm sm:text-base flex items-center gap-2">
+                    <div className="font-medium text-sm flex items-center gap-2">
                       {p.title}
                       <span className={`text-xs ${diffColor}`}>{diffLabel}</span>
                     </div>
                     <div className="text-xs text-text-dim">{p.short}</div>
                   </div>
-                  <div className="text-xs">
-                    {solved ? (
-                      <span className="text-green-400">✓</span>
-                    ) : (
-                      <span className="text-text-dim">○</span>
-                    )}
-                  </div>
+                  <div className="text-xs">{solved ? "✓" : "○"}</div>
                 </div>
               </li>
             );
           })}
         </ul>
-
-        <div className="mt-6 text-sm">
-          <div>
-            Solved:{" "}
-            <strong className="text-accent">
-              {Object.values(solvedState).filter(Boolean).length}
-            </strong>{" "}
-            / {visiblePuzzles.length}
-          </div>
-          <div className="text-xs text-text-dim mt-1">
-            Progress and hints saved locally.
-          </div>
-        </div>
-
-        {showHidden && (
-          <div className="mt-4 text-xs text-purple-400 animate-pulse">
-            ✨ Secret puzzle unlocked!
-          </div>
-        )}
       </aside>
 
-      {/* MAIN SECTION */}
-      <section
-        className={`rounded-lg p-4 border border-surface bg-surface-alt/40 flex-1 transition-all duration-300 ${
-          !selected ? "min-h-[250px]" : ""
-        }`}
-      >
+      {/* 🎯 Puzzle Details */}
+      <section className="rounded-lg p-4 border border-surface bg-surface-alt/40 flex-1">
         {!selected ? (
           <div className="text-center md:text-left">
-            <h4 className="font-semibold text-lg mb-2">
-              Choose a puzzle to begin
-            </h4>
+            <h4 className="font-semibold text-lg mb-2">Choose a puzzle</h4>
             <p className="text-text-dim text-sm">
               Each puzzle has hints and difficulty levels. Unlock hidden ones by
               solving others.
             </p>
           </div>
         ) : (
-          <div>
-            <div className="block md:hidden mb-3">
-              <button
-                onClick={() => setSelected(null)}
-                className="text-xs px-3 py-1 rounded border border-surface hover:bg-surface-alt transition-all focus:outline-none focus:ring-2 focus:ring-accent/30"
+          <>
+            <h4 className="font-semibold text-lg">{selected.title}</h4>
+            <p className="text-sm text-text-dim mt-2">{selected.description}</p>
+            {renderHints(selected)}
+            <div className="mt-5">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  trySolve();
+                }}
+                className="flex flex-col sm:flex-row gap-2"
               >
-                ← Back to list
-              </button>
+                <input
+                  value={attempt}
+                  onChange={(e) => setAttempt(e.target.value)}
+                  placeholder="Type solution here..."
+                  className="flex-1 bg-transparent border border-surface px-3 py-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                />
+                <button
+                  type="submit"
+                  className="cursor-pointer px-4 py-2 rounded bg-surface border border-surface hover:bg-surface-alt transition-all focus:outline-none focus:ring-2 focus:ring-accent/30"
+                >
+                  Try
+                </button>
+              </form>
+              {message && (
+                <div
+                  className={`mt-2 text-sm ${
+                    message.includes("Correct")
+                      ? "text-green-400"
+                      : "text-accent"
+                  } animate-pulse`}
+                >
+                  {message}
+                </div>
+              )}
             </div>
-
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h4 className="font-semibold text-lg">{selected.title}</h4>
-                  <div
-                    className={`px-2 py-0.5 text-xs rounded border border-surface ${getDifficultyColor(
-                      (selected.difficulty as Difficulty) ?? "easy"
-                    )}`}
-                  >
-                    {getDifficultyLabel(
-                      (selected.difficulty as Difficulty) ?? "easy"
-                    )}
-                  </div>
-                  {solvedState[selected.id] && (
-                    <div className="ml-auto text-sm text-green-400">Solved ✓</div>
-                  )}
-                </div>
-
-                <p className="text-sm text-text-dim mt-2 leading-relaxed">
-                  {selected.description}
-                </p>
-
-                {renderHints(selected)}
-
-                <div className="mt-5">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      trySolve();
-                    }}
-                    className="flex flex-col sm:flex-row gap-2"
-                  >
-                    <input
-                      value={attempt}
-                      onChange={(e) => setAttempt(e.target.value)}
-                      placeholder="Is your brain even working..."
-                      className="flex-1 bg-transparent border border-surface px-3 py-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 py-2 rounded bg-surface border border-surface hover:bg-surface-alt transition-all focus:outline-none focus:ring-2 focus:ring-accent/30"
-                    >
-                      Try
-                    </button>
-                  </form>
-
-                  {message && (
-                    <div
-                      className={`mt-2 text-sm ${
-                        message.includes("Correct") ? "text-green-400" : "text-accent"
-                      } animate-pulse`}
-                    >
-                      {message}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <aside className="w-full lg:w-52 text-xs text-text-dim border-t lg:border-t-0 lg:border-l border-surface pt-3 lg:pt-0 lg:pl-3">
-                <div className="font-semibold mb-2">Meta</div>
-                <div>
-                  Badge:{" "}
-                  <strong className="text-accent">
-                    {selected.badge ?? selected.id}
-                  </strong>
-                </div>
-                <div className="mt-3 leading-relaxed">
-                  <div className="font-medium mb-1 text-text">Tips:</div>
-                  <ul className="list-disc ml-5 space-y-1">
-                    <li>Hints unlock sequentially (Tier 1 → 3).</li>
-                    <li>Solutions are case-sensitive unless noted.</li>
-                    <li>Progress stays in localStorage.</li>
-                    {selected.hidden && (
-                      <li className="text-purple-400">
-                        🔒 Secret puzzle — you found it!
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              </aside>
-            </div>
-          </div>
+          </>
         )}
       </section>
+
+      {/* 🔓 Unlock Modal */}
+      {unlockModal.show && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[999] backdrop-blur-sm">
+          <div className="relative bg-surface border border-accent/30 rounded-xl shadow-[0_0_25px_var(--color-accent)] p-6 max-w-sm w-[90%] text-center animate-fadeIn">
+            {/* ❌ Close Button */}
+            <button
+              onClick={() =>
+                setUnlockModal({ show: false, tier: null, mode: "confirm" })
+              }
+              className="absolute top-2 right-3 text-text-dim hover:text-accent transition-colors text-xl"
+            >
+              ×
+            </button>
+
+            <h4 className="text-lg font-semibold text-accent mb-3">
+              Unlock Hint {unlockModal.tier}
+            </h4>
+
+            {unlockModal.mode === "confirm" && (
+              <p className="text-sm text-text-dim mb-4">
+                Confirm unlock to reveal this hint.
+              </p>
+            )}
+
+            {unlockModal.mode === "ad" && (
+              <p className="text-sm text-text-dim mb-4">
+                Watching ad... ⏳ {unlockModal.countdown}s remaining
+              </p>
+            )}
+
+            {unlockModal.mode === "challenge" && (
+              <div className="text-sm text-text-dim mb-4">
+                <p className="mb-2">Solve this task: click 🔐 three times!</p>
+                <button
+                  onClick={() => {
+                    if (!unlockModal.challengeCompleted) {
+                      setUnlockModal((prev) => ({
+                        ...prev,
+                        challengeCompleted: true,
+                      }));
+                      confirmUnlockHint();
+                    }
+                  }}
+                  className="text-lg"
+                >
+                  🔐
+                </button>
+              </div>
+            )}
+
+            {unlockModal.mode === "terminal" && (
+              <p className="text-sm text-text-dim mb-4">
+                Type{" "}
+                <code className="text-accent font-mono">
+                  {unlockModal.commandRequired}
+                </code>{" "}
+                in the Hacker Lab Terminal to unlock this hint.
+                {unlockModal.completed && (
+                  <div className="text-green-400 mt-2 animate-pulse">
+                    ✅ Command Verified!
+                  </div>
+                )}
+              </p>
+            )}
+
+            {unlockModal.mode === "confirm" && (
+              <div className="flex justify-center gap-3">
+                <button
+                  onClick={() => confirmUnlockHint()}
+                  className="px-4 py-2 rounded bg-accent/10 border border-accent text-accent text-sm hover:bg-accent/20 transition-all"
+                >
+                  ✅ Unlock
+                </button>
+                <button
+                  onClick={() =>
+                    setUnlockModal({ show: false, tier: null, mode: "confirm" })
+                  }
+                  className="px-4 py-2 rounded border border-surface text-sm hover:bg-surface-alt transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

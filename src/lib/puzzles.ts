@@ -1,11 +1,12 @@
 // src/lib/puzzles.ts
-// 🔒 Central puzzle registry for the Hacker Lab
+// 🧠 Central puzzle registry for the Hacker Lab (terminal-first edition)
 
 export type PuzzleId = string;
 
 export type HintTier = {
   text: string;
-  cost?: number; // optional score penalty
+  cost?: number; // optional future unlock cost
+  locked?: boolean; // locked until user performs action
 };
 
 export type Difficulty = "easy" | "medium" | "hard" | "secret";
@@ -14,15 +15,15 @@ export type Puzzle = {
   id: PuzzleId;
   title: string;
   short: string;
-  type: "code" | "localstorage" | "route" | "console";
+  type: "terminal" | "localstorage" | "route";
   difficulty: Difficulty;
   solutions: string[];
   lower?: boolean;
   hints: HintTier[];
   description?: string;
   badge?: string;
-  dependsOn?: PuzzleId[]; // optional dependencies
-  hidden?: boolean; // optional secret puzzle
+  dependsOn?: PuzzleId[];
+  hidden?: boolean;
 };
 
 // 🔐 LocalStorage keys
@@ -32,73 +33,70 @@ const LS_KEYS = {
   hintUsage: "puzzle_hint_usage",
 };
 
-// 🧩 Puzzle registry
+// 🧩 Puzzle registry (terminal-driven)
 const puzzles: Puzzle[] = [
   {
-    id: "consolePuzzle",
-    title: "Console Explorer",
-    short: "A base64 clue is printed to the browser console.",
-    type: "console",
+    id: "scanPuzzle",
+    title: "System Scan",
+    short: "The 'scan' command reveals encrypted fragments.",
+    type: "terminal",
     difficulty: "easy",
-    solutions: ["SECRET_257"],
+    solutions: ["ACCESS_GRANTED"],
     hints: [
-      { text: "Open devtools → Console. Look for an ASCII header." },
-      { text: "There is a base64 string printed. Decode it (online or in JS)." },
-      { text: "Base64 'U0VDUkVUXzI1Nw==' decodes to the answer." },
+      { text: "Hint locked 🔒 — perform a task to unlock.", locked: true },
+      { text: "Hint locked 🔒 — perform a task to unlock.", locked: true },
     ],
-    description: "A friendly clue is printed to the browser console on page load.",
-    badge: "Console Explorer",
+    description:
+      "Type 'scan' in the terminal to begin a system integrity scan. Hidden fragments will appear — assemble them carefully.",
+    badge: "System Scanner",
+  },
+  {
+    id: "probePuzzle",
+    title: "Data Probe",
+    short: "After completing the scan, try probing deeper into the system.",
+    type: "terminal",
+    difficulty: "medium",
+    solutions: ["ROOT_SIGNAL_FOUND"],
+    dependsOn: ["scanPuzzle"],
+    hints: [
+      { text: "Hint locked 🔒 — perform a task to unlock.", locked: true },
+      { text: "Hint locked 🔒 — perform a task to unlock.", locked: true },
+    ],
+    description:
+      "Once the scan is complete, typing 'probe' reveals corrupted signal data. You must reconstruct the original code word.",
+    badge: "Data Analyst",
   },
   {
     id: "localKeyPuzzle",
-    title: "Local Key Setter",
-    short: "Set a specific localStorage key/value to unlock this.",
+    title: "Local Key Cipher",
+    short: "There’s a key hidden within your device memory.",
     type: "localstorage",
-    difficulty: "medium",
-    solutions: ["OPEN_SESAME=true"],
-    hints: [
-      { text: "Check for puzzles that use localStorage as state." },
-      { text: "Try opening the console and set localStorage key 'OPEN_SESAME' to 'true'." },
-      { text: "In console: localStorage.setItem('OPEN_SESAME','true') then refresh or run 'puzzles'." },
-    ],
-    description:
-      "This puzzle tests your ability to interact with browser storage — set the exact key/value pair.",
-    badge: "Local Key Ninja",
-  },
-  {
-    id: "routePuzzle",
-    title: "Hidden Route",
-    short: "A secret route exists on the site. Find it.",
-    type: "route",
     difficulty: "hard",
-    lower: true,
-    solutions: ["/ghost-door", "/admin-echo"],
+    solutions: ["DECRYPTED_KEY=TRUE"],
     hints: [
-      { text: "Check headings, image alt text, or repo README for unusual slugs." },
-      { text: "Look for 'ghost' or 'admin' clues in the page copy or console." },
-      { text: "Try visiting /ghost-door or /admin-echo manually in address bar." },
+      { text: "Hint locked 🔒 — perform a task to unlock.", locked: true },
+      { text: "Hint locked 🔒 — perform a task to unlock.", locked: true },
     ],
     description:
-      "A hidden route on the site leads to an Easter page — guess or find the slug to unlock.",
-    badge: "Route Finder",
+      "You must create a key in localStorage named 'DECRYPTED_KEY' with value 'TRUE' to pass. Only those who decoded the previous signals will know how.",
+    badge: "Memory Hacker",
   },
   {
     id: "neoEaster",
-    title: "Wake Up, Neo",
-    short: "Triggered only if you discover the Matrix command in the terminal.",
-    type: "code",
+    title: "The Awakening",
+    short: "Something special happens when you connect the final dots.",
+    type: "terminal",
     difficulty: "secret",
-    solutions: ["thereisnospoon"],
+    solutions: ["THERE_IS_NO_SPOON"],
+    dependsOn: ["probePuzzle", "localKeyPuzzle"],
     hidden: true,
     hints: [
-      { text: "Try running hidden commands like 'neo' or 'matrix' in the terminal." },
-      { text: "A phrase about the Matrix might appear..." },
-      { text: "Use the iconic quote — lowercase, no spaces." },
+      { text: "Hint locked 🔒 — perform a task to unlock.", locked: true },
+      { text: "Hint locked 🔒 — perform a task to unlock.", locked: true },
     ],
     description:
-      "An Easter egg puzzle unlocked by typing 'neo' in the Hacker Lab terminal.",
+      "When all systems align, type 'awakening' or something equally prophetic. You’ll know when you’re ready.",
     badge: "The One",
-    dependsOn: ["consolePuzzle"],
   },
 ];
 
@@ -150,7 +148,7 @@ export function checkSolution(id: PuzzleId, attempt: string) {
 
   if (match) {
     markSolved(id);
-    return { ok: true, message: "Correct!" };
+    return { ok: true, message: "✅ Access Granted" };
   }
 
   // Special case for localStorage key=value puzzles
@@ -161,14 +159,14 @@ export function checkSolution(id: PuzzleId, attempt: string) {
       try {
         localStorage.setItem(key, val);
         markSolved(id);
-        return { ok: true, message: "Correct (and stored)!" };
+        return { ok: true, message: "🗝️ Correct — key stored in memory!" };
       } catch {
-        return { ok: false, message: "Couldn't access localStorage." };
+        return { ok: false, message: "⚠️ Couldn't access localStorage." };
       }
     }
   }
 
-  return { ok: false, message: "Incorrect — try again or use a hint." };
+  return { ok: false, message: "❌ Access Denied — try another command." };
 }
 
 export function getHints(id: PuzzleId): HintTier[] {
@@ -178,7 +176,7 @@ export function getHints(id: PuzzleId): HintTier[] {
 
 //
 // ──────────────────────────────────────────────
-// 🎯 Utility Helpers (for UI enhancements)
+// 🎯 UI Helpers
 // ──────────────────────────────────────────────
 //
 

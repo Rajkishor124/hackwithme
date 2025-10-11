@@ -78,7 +78,7 @@ export default function ProjectsGrid() {
           transition={{ duration: 0.6 }}
           className="text-3xl md:text-4xl font-bold mb-10 text-center text-accent tracking-tight"
         >
-          🚀 Highlighted Projects
+          🔮Highlighted Projects
         </motion.h3>
 
         {/* Projects Grid */}
@@ -224,6 +224,14 @@ export default function ProjectsGrid() {
                       className="cursor-pointer px-4 py-2 rounded-md border border-surface text-sm hover:bg-accent/10 hover:text-accent transition-all"
                     >
                       💻 View Code
+                    </button>
+                    <button
+                      onClick={() =>
+                        addToast("↗️ Projects page in progress — coming soon!")
+                      }
+                      className="cursor-pointer px-4 py-2 rounded-md border border-surface text-sm hover:bg-accent/10 hover:text-accent transition-all"
+                    >
+                      ↗️ Explore more
                     </button>
                   </div>
                 </motion.div>

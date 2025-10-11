@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { checkSolution, markSolved, isSolved } from "../lib/puzzles";
 
 interface TerminalProps {
   visible: boolean;
@@ -16,11 +17,10 @@ export default function Terminal({
   const [booting, setBooting] = useState(true);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
   const [autoScroll, setAutoScroll] = useState(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
 
-  // Boot sequence trigger
+  // Boot sequence
   useEffect(() => {
     if (!visible) return;
     playSound("boot");
@@ -30,16 +30,17 @@ export default function Terminal({
   }, [visible]);
 
   useEffect(() => {
-    if (!booting) localStorage.setItem("terminal_history", JSON.stringify(lines));
+    if (!booting)
+      localStorage.setItem("terminal_history", JSON.stringify(lines));
   }, [lines, booting]);
 
   async function simulateBootSequence() {
     setLines([]);
     const sequence = [
       "Initializing Neural Terminal v6.0...",
-      "Loading secure kernel modules...",
-      "Decrypting user profile...",
-      "Mounting virtual drives...",
+      "Loading encrypted command registry...",
+      "Decrypting user node...",
+      "Mounting puzzle memory core...",
       "Running diagnostics...",
       "█████████████████████████████████████████",
       "System check: ✅ PASSED",
@@ -48,30 +49,16 @@ export default function Terminal({
     ];
 
     for (const line of sequence) {
-      await new Promise((r) => setTimeout(r, 250));
+      await new Promise((r) => setTimeout(r, 220));
       setLines((prev) => [...prev, line]);
     }
 
-    await new Promise((r) => setTimeout(r, 500));
-
-    const asciiLogo = [
-      "      ___            _      _     _            ",
-      "     / _ \\__ _ _ __ (_) ___| |__ (_)_ __ ___   ",
-      "    / /_)/ _` | '_ \\| |/ __| '_ \\| | '_ ` _ \\  ",
-      "   / ___/ (_| | | | | | (__| | | | | | | | | | ",
-      "   \\/    \\__,_|_| |_|_|\\___|_| |_|_|_| |_| |_| ",
-      "",
-    ];
-
-    for (const line of asciiLogo) {
-      await new Promise((r) => setTimeout(r, 40));
-      setLines((prev) => [...prev, line]);
-    }
+    await new Promise((r) => setTimeout(r, 400));
 
     setLines((prev) => [
       ...prev,
       "💻 Boot complete.",
-      "💾 Persistent memory loaded.",
+      "💾 Neural memory loaded.",
       "Type 'help' to begin exploration.",
     ]);
 
@@ -93,7 +80,7 @@ export default function Terminal({
     audio.play().catch(() => {});
   }
 
-  // Command input
+  // Handle command submit
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim()) return;
@@ -104,7 +91,7 @@ export default function Terminal({
     setInput("");
   }
 
-  // Commands
+  // Main command handler
   async function handleCommand(command: string) {
     const args = command.split(" ");
     const cmd = args[0].toLowerCase();
@@ -114,84 +101,115 @@ export default function Terminal({
         addLine(
           [
             "Available commands:",
-            "  help, ls, cat <file>, unlock <id>",
-            "  badge list, sudo, hack, matrix",
-            "  clear               Clear terminal",
+            "  help               → Show available commands",
+            "  scan               → Run a system scan",
+            "  probe              → Probe deeper after scan",
+            "  awakening          → Unlock the final secret",
+            "  badge list         → View collected badges",
+            "  clear              → Clear terminal logs",
           ].join("\n")
         );
-        onSolved?.("consolePuzzle");
         break;
 
       case "clear":
         setLines([]);
         break;
 
-      case "ls":
-        addLine("readme.txt   secret.txt   hint.md   system.log");
-        break;
-
-      case "cat":
-        if (args.length < 2) {
-          addLine("Usage: cat <filename>");
-          return;
-        }
-        if (args[1] === "readme.txt")
-          addLine("Welcome to the Hacker Lab. Explore. Decode. Unlock.");
-        else if (args[1] === "secret.txt") {
-          addLine(
-            "QWdlbnQ6IFJhamtpc2hvciBNdXJtdQpDb2RlOiA0MgpIaW50OiBVc2UgJ3VubG9jayA0MicgdG8gYWN0aXZhdGUgdGhlIHB1enpsZQ=="
-          );
-          onSolved?.("localKeyPuzzle");
-        } else if (args[1] === "hint.md")
-          addLine("Puzzles can be triggered via 'unlock <id>'");
-        else addLine("cat: file not found");
-        break;
-
-      case "unlock":
-        if (!args[1]) {
-          addLine("Usage: unlock <id>");
-          return;
-        }
-        if (args[1] === "42") {
-          addLine("[ACCESS GRANTED] Puzzle 42 activated.");
-          onPuzzleTrigger?.("puzzle42");
-          onSolved?.("terminalMaster");
-          pulseEffect("granted");
-        } else {
-          addLine("[ACCESS DENIED]");
-          pulseEffect("denied");
-        }
-        break;
-
       case "badge":
         if (args[1] === "list") {
-          const badges = JSON.parse(localStorage.getItem("portfolio_badges") || "[]");
+          const badges = JSON.parse(
+            localStorage.getItem("portfolio_badges") || "[]"
+          );
           addLine(badges.length ? badges.join(", ") : "No badges yet.");
         } else addLine("Usage: badge list");
         break;
 
-      case "sudo":
-        addLine("[root@raj] Permission denied.");
-        pulseEffect("denied");
+      // 🧠 PUZZLE COMMANDS
+      case "scan": {
+        if (isSolved("scanPuzzle")) {
+          addLine("🔁 System already scanned.");
+          return;
+        }
+        addLine("Running system scan...");
+        await new Promise((r) => setTimeout(r, 1000));
+        addLine("Signal fragments detected: [A]CCESS_[G]RANTED");
+        const scanResult = checkSolution("scanPuzzle", "ACCESS_GRANTED");
+        if (scanResult.ok) {
+          pulseEffect("granted");
+          addLine("✅ Access granted. Fragment decrypted.");
+          markSolved("scanPuzzle");
+          onSolved?.("scanPuzzle");
+          onPuzzleTrigger?.("scanPuzzle");
+        } else {
+          pulseEffect("denied");
+          addLine("❌ Scan failed. Try again.");
+        }
         break;
+      }
 
-      case "hack":
-      case "matrix":
-        addLine("⚡ SYSTEM GLITCH ⚡");
-        document.body.classList.add("matrix-flicker");
-        onSolved?.("easterEgg");
-        pulseEffect("granted");
+      case "probe": {
+        if (!isSolved("scanPuzzle")) {
+          addLine("⚠️ Run 'scan' first.");
+          return;
+        }
+        if (isSolved("probePuzzle")) {
+          addLine("🧩 Data probe already complete.");
+          return;
+        }
+        addLine("Initiating deep data probe...");
+        await new Promise((r) => setTimeout(r, 1200));
+        addLine("Found residual echo: ROOT_SIGNAL_FOUND");
+        const probeResult = checkSolution("probePuzzle", "ROOT_SIGNAL_FOUND");
+        if (probeResult.ok) {
+          pulseEffect("granted");
+          addLine("✅ Signal reconstruction successful.");
+          markSolved("probePuzzle");
+          onSolved?.("probePuzzle");
+          onPuzzleTrigger?.("probePuzzle");
+        } else {
+          pulseEffect("denied");
+          addLine("❌ Signal corrupted.");
+        }
         break;
+      }
 
-      case "neo":
-        addLine("Wake up, Neo... 🧠");
-        pulseEffect("granted");
+      case "awakening": {
+        if (!isSolved("probePuzzle") || !isSolved("localKeyPuzzle")) {
+          addLine("⚠️ System not ready. Complete prior sequences.");
+          return;
+        }
+        if (isSolved("neoEaster")) {
+          addLine("🧠 You've already awakened, The One.");
+          return;
+        }
+        addLine("⚡ Initiating awakening protocol...");
+        await new Promise((r) => setTimeout(r, 1500));
+        addLine("Transcending local space...");
+        const awakenResult = checkSolution("neoEaster", "THERE_IS_NO_SPOON");
+        if (awakenResult.ok) {
+          pulseEffect("granted");
+          addLine("🧠 You are The One. Reality bends to your will.");
+          markSolved("neoEaster");
+          onSolved?.("neoEaster");
+          onPuzzleTrigger?.("neoEaster");
+        } else {
+          pulseEffect("denied");
+          addLine("❌ Awakening failed. Try again.");
+        }
         break;
+      }
 
       default:
         addLine(`Unknown command: ${cmd}`);
         pulseEffect("denied");
     }
+
+    // ✅ Emit terminal command for PuzzleEngine
+    window.dispatchEvent(
+      new CustomEvent("terminal-command", {
+        detail: { command, timestamp: Date.now() },
+      })
+    );
   }
 
   function addLine(text: string) {
@@ -205,7 +223,7 @@ export default function Terminal({
     setTimeout(() => el.classList.remove("pulse-green", "pulse-red"), 400);
   }
 
-  // 🧩 Scroll management
+  // Scroll management
   useEffect(() => {
     const el = logRef.current;
     if (!el) return;
@@ -227,7 +245,6 @@ export default function Terminal({
     }
   }, [lines, autoScroll]);
 
-  // Trap scroll inside
   useEffect(() => {
     const el = logRef.current;
     if (!el) return;
@@ -251,8 +268,11 @@ export default function Terminal({
       className="relative bg-surface text-text font-mono rounded-md border border-surface-alt shadow-inner crt flex flex-col h-[45vh] sm:h-[60vh]"
       onClick={() => inputRef.current?.focus()}
     >
-      {/* Scrollable log */}
-      <div ref={logRef} className="flex-1 overflow-y-auto p-3 sm:p-4 text-[0.8rem] sm:text-sm leading-relaxed">
+      {/* Scrollable Log */}
+      <div
+        ref={logRef}
+        className="flex-1 overflow-y-auto p-3 sm:p-4 text-[0.8rem] sm:text-sm leading-relaxed"
+      >
         {booting ? (
           <div className="text-accent text-center mt-16 animate-pulse">
             <div className="text-lg mb-2">[ SYSTEM BOOTING... ]</div>
